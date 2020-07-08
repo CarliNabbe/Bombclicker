@@ -1,81 +1,102 @@
 "use strict";
-class Bomb extends HTMLElement {
-    constructor() {
+class gameObject extends HTMLElement {
+    constructor(game) {
         super();
-        this.posx = 0;
-        this.posy = 0;
+        this.game = game;
         let foreground = document.getElementsByTagName("foreground")[0];
         foreground.appendChild(this);
-        this.posx = Math.floor(Math.random() * window.innerWidth);
-        this.posy = -200;
-        this.addEventListener('click', event => {
-            this.posy = -500;
-        });
     }
     update() {
         this.style.transform = `translate(${this.posx}px, ${this.posy}px)`;
-        let h = window.innerHeight;
-        if (this.posy > h) {
-            this.posy = 0;
+    }
+}
+class Bomb extends gameObject {
+    constructor(game) {
+        super(game);
+        this.resetPosition();
+        this.addEventListener("click", (e) => this.onClick(e));
+    }
+    onClick(e) {
+        this.game.scorePoint();
+        this.resetPosition();
+    }
+    update() {
+        this.posy += this.speed;
+        if (this.posy > window.innerHeight) {
+            this.game.destroyBuilding();
+            this.resetPosition();
         }
-        this.posy++;
+        super.update();
+    }
+    resetPosition() {
+        this.speed = 1 + Math.floor(Math.random() * 5);
+        this.posy = Math.random() * -300 - this.clientHeight;
+        this.posx = Math.floor(Math.random() * (window.innerWidth - this.clientWidth));
     }
 }
 window.customElements.define("bomb-component", Bomb);
-class Car extends HTMLElement {
-    constructor() {
-        super();
-        this.posx = 0;
-        this.posy = 0;
-        let foreground = document.getElementsByTagName("foreground")[0];
-        foreground.appendChild(this);
-        this.posx = 1000;
-        this.posy = 600;
+class Car extends gameObject {
+    constructor(game) {
+        super(game);
+        this.posx = -100;
+        this.posy = window.innerHeight - this.clientHeight;
+        this.addEventListener("click", (e) => this.onClick(e));
+    }
+    onClick(e) {
+        this.game.repairBuilding();
     }
     update() {
-        this.style.transform = `translate(${this.posx}px, ${this.posy}px)`;
-        let w = window.innerWidth;
-        console.log(w);
-        if (this.posx > w) {
-            this.posx = Math.floor(Math.random() * window.innerWidth - window.innerWidth);
-        }
         this.posx++;
+        if (this.posx > window.innerWidth) {
+            this.posx = -100;
+        }
+        super.update();
     }
 }
 window.customElements.define("car-component", Car);
 class Game {
     constructor() {
-        this.score = 1;
+        this.score = 0;
         this.destroyed = 0;
-        this.bomb = [];
+        this.gameOver = false;
+        this.BOMBS = 4;
         this.textfield = document.getElementsByTagName("textfield")[0];
         this.statusbar = document.getElementsByTagName("bar")[0];
-        this.bomb = [new Bomb(), new Bomb(), new Bomb(), new Bomb()];
-        this.car = new Car();
+        this.bombs = [];
+        for (let i = 0; i < this.BOMBS; i++) {
+            this.bombs.push(new Bomb(this));
+        }
+        this.car = new Car(this);
         this.gameLoop();
     }
     gameLoop() {
-        for (var i = 0, a = this.bomb; i < a.length; i++) {
-            var b = a[i];
-            b.update();
+        console.log("updating the game");
+        for (let i = 0; i < this.BOMBS; i++) {
+            this.bombs[i].update();
         }
         this.car.update();
-        requestAnimationFrame(() => this.gameLoop());
+        if (!this.gameOver) {
+            requestAnimationFrame(() => this.gameLoop());
+        }
     }
     destroyBuilding() {
         this.destroyed++;
         console.log("buildings destroyed " + this.destroyed);
+        this.statusbar.style.backgroundPositionX = `${-72 * this.destroyed}px`;
+        if (this.destroyed == 4) {
+            this.gameOver = true;
+        }
+    }
+    repairBuilding() {
+        this.destroyed = 0;
+        this.statusbar.style.backgroundPositionX = `${-72 * this.destroyed}px`;
     }
     scorePoint() {
-        this.score++;
-        this.textfield.innerHTML = "Score: " + this.score;
+        if (!this.gameOver) {
+            this.score++;
+            this.textfield.innerHTML = "Score: " + this.score;
+        }
     }
 }
 window.addEventListener("load", () => new Game());
-class GameObject {
-    constructor(posx, posy) {
-        this.posx = posx;
-        this.posy = posy;
-    }
-}
 //# sourceMappingURL=main.js.map
